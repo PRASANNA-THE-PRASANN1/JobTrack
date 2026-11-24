@@ -23,9 +23,11 @@ import java.util.Map;
 public class JobApplicationServiceImpl implements JobApplicationService {
 
     private final JobApplicationRepository repository;
+    private final com.jobtrack.service.TimelineService timelineService;
 
-    public JobApplicationServiceImpl(JobApplicationRepository repository) {
+    public JobApplicationServiceImpl(JobApplicationRepository repository, com.jobtrack.service.TimelineService timelineService) {
         this.repository = repository;
+        this.timelineService = timelineService;
     }
 
     @Override
@@ -48,6 +50,15 @@ public class JobApplicationServiceImpl implements JobApplicationService {
         JobApplication application = new JobApplication();
         mapDtoToEntity(request, application);
         JobApplication saved = repository.save(application);
+
+        // Auto-log creation event in timeline
+        timelineService.logAutomatedEvent(
+                saved,
+                com.jobtrack.entity.TimelineEventType.APPLICATION_CREATED,
+                "Application Created",
+                "Applied for " + saved.getJobTitle() + " at " + saved.getCompanyName() + " (" + saved.getWorkMode() + ")"
+        );
+
         return JobApplicationResponse.fromEntity(saved);
     }
 
@@ -56,8 +67,21 @@ public class JobApplicationServiceImpl implements JobApplicationService {
         JobApplication application = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("JobApplication", "id", id));
 
+        ApplicationStatus previousStatus = application.getStatus();
+
         mapDtoToEntity(request, application);
         JobApplication updated = repository.save(application);
+
+        // Auto-log status change if status changed
+        if (previousStatus != updated.getStatus()) {
+            timelineService.logAutomatedEvent(
+                    updated,
+                    com.jobtrack.entity.TimelineEventType.STATUS_CHANGED,
+                    "Status Changed to " + updated.getStatus(),
+                    "Transitioned from " + previousStatus + " to " + updated.getStatus()
+            );
+        }
+
         return JobApplicationResponse.fromEntity(updated);
     }
 

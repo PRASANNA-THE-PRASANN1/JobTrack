@@ -38,6 +38,9 @@ class JobApplicationServiceTest {
     @Mock
     private JobApplicationRepository repository;
 
+    @Mock
+    private TimelineService timelineService;
+
     @InjectMocks
     private JobApplicationServiceImpl service;
 

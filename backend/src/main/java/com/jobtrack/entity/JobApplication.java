@@ -89,6 +89,15 @@ public class JobApplication {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @OneToMany(mappedBy = "application", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<InterviewRound> interviews = new java.util.ArrayList<>();
+
+    @OneToMany(mappedBy = "application", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<TimelineEvent> timelineEvents = new java.util.ArrayList<>();
+
+    @OneToMany(mappedBy = "application", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<ApplicationDocument> documents = new java.util.ArrayList<>();
+
     public JobApplication() {
     }
 

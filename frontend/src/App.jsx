@@ -5,6 +5,7 @@ import ApplicationFilters from './components/applications/ApplicationFilters';
 import ApplicationList from './components/applications/ApplicationList';
 import ApplicationFormModal from './components/applications/ApplicationFormModal';
 import ApplicationDetailModal from './components/applications/ApplicationDetailModal';
+import UpcomingInterviewsWidget from './components/applications/UpcomingInterviewsWidget';
 import ConfirmDialog from './components/common/ConfirmDialog';
 import { applicationService } from './api/applicationService';
 import { Briefcase, Send, Users, Award, XCircle, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -12,6 +13,7 @@ import { Briefcase, Send, Users, Award, XCircle, AlertCircle, CheckCircle2 } fro
 export default function App() {
   const [applications, setApplications] = useState([]);
   const [stats, setStats] = useState(null);
+  const [upcomingInterviews, setUpcomingInterviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [isApiConnected, setIsApiConnected] = useState(false);
@@ -31,6 +33,7 @@ export default function App() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingApp, setEditingApp] = useState(null);
   const [viewingApp, setViewingApp] = useState(null);
+  const [detailInitialTab, setDetailInitialTab] = useState('overview');
   const [deletingApp, setDeletingApp] = useState(null);
 
   const showToast = (message, type = 'success') => {
@@ -46,6 +49,17 @@ export default function App() {
       }
     } catch (err) {
       console.error('Failed to load stats:', err);
+    }
+  }, []);
+
+  const loadUpcomingInterviews = useCallback(async () => {
+    try {
+      const response = await applicationService.getUpcomingInterviews();
+      if (response && response.success) {
+        setUpcomingInterviews(response.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to load upcoming interviews:', err);
     }
   }, []);
 
@@ -85,7 +99,8 @@ export default function App() {
   useEffect(() => {
     loadApplications();
     loadStats();
-  }, [loadApplications, loadStats]);
+    loadUpcomingInterviews();
+  }, [loadApplications, loadStats, loadUpcomingInterviews]);
 
   // Health check polling
   useEffect(() => {
@@ -135,6 +150,7 @@ export default function App() {
       setEditingApp(null);
       loadApplications();
       loadStats();
+      loadUpcomingInterviews();
     } catch (err) {
       showToast(err.message || 'Failed to save application', 'error');
     } finally {
@@ -151,6 +167,7 @@ export default function App() {
       setDeletingApp(null);
       loadApplications();
       loadStats();
+      loadUpcomingInterviews();
     } catch (err) {
       showToast(err.message || 'Failed to delete application', 'error');
     } finally {
@@ -170,8 +187,27 @@ export default function App() {
       }
       loadApplications();
       loadStats();
+      loadUpcomingInterviews();
     } catch (err) {
       showToast(err.message || 'Failed to update status', 'error');
+    }
+  };
+
+  const handleSelectUpcomingInterview = async (appId) => {
+    const existing = applications.find((a) => a.id === appId);
+    if (existing) {
+      setDetailInitialTab('interviews');
+      setViewingApp(existing);
+    } else {
+      try {
+        const res = await applicationService.getApplicationById(appId);
+        if (res && res.success) {
+          setDetailInitialTab('interviews');
+          setViewingApp(res.data);
+        }
+      } catch (err) {
+        showToast('Failed to load application details', 'error');
+      }
     }
   };
 
@@ -203,6 +239,7 @@ export default function App() {
         onRefresh={() => {
           loadApplications();
           loadStats();
+          loadUpcomingInterviews();
         }}
         isConnected={isApiConnected}
         loading={loading}
@@ -210,6 +247,12 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Phase 2: Upcoming Interviews Banner Widget */}
+        <UpcomingInterviewsWidget
+          interviews={upcomingInterviews}
+          onSelectInterview={handleSelectUpcomingInterview}
+        />
+
         {/* Metric Cards KPI Row */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <StatCard
@@ -277,7 +320,10 @@ export default function App() {
         <ApplicationList
           applications={applications}
           loading={loading}
-          onView={(app) => setViewingApp(app)}
+          onView={(app) => {
+            setDetailInitialTab('overview');
+            setViewingApp(app);
+          }}
           onEdit={handleOpenEditModal}
           onDelete={(app) => setDeletingApp(app)}
           page={page}
@@ -305,6 +351,12 @@ export default function App() {
         application={viewingApp}
         onEdit={handleOpenEditModal}
         onStatusChange={handleQuickStatusChange}
+        initialTab={detailInitialTab}
+        onRefreshParent={() => {
+          loadUpcomingInterviews();
+          loadStats();
+          loadApplications();
+        }}
       />
 
       <ConfirmDialog

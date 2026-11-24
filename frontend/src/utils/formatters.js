@@ -25,6 +25,23 @@ export const formatDate = (dateString) => {
   }
 };
 
+export const formatDateTime = (dateString) => {
+  if (!dateString) return '—';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  } catch (e) {
+    return dateString;
+  }
+};
+
 export const formatRelativeTime = (timestamp) => {
   if (!timestamp) return '';
   try {
